@@ -1,20 +1,15 @@
 import streamlit as st
-import pymupdf as fitz
+from pypdf import PdfReader, PdfWriter
 import tempfile
 import os
 
 st.set_page_config(page_title="Generador de Specs", layout="centered")
 
-# =========================
-# CONFIGURACIÓN
-# =========================
-
 PDF_MAESTRO = "HOTSALE_SPECS.pdf"
 
-# Páginas base (SIEMPRE)
-PAGINAS_BASE = list(range(4, 13))  # 4–12
+# Siempre incluir base
+PAGINAS_BASE = list(range(4, 13))  # 4-12
 
-# Patrocinio → conceptos
 PATROCINIO_A_CONCEPTOS = {
     "Bronce fijo": [
         "Pauta Digital en Carrusel",
@@ -43,21 +38,18 @@ PATROCINIO_A_CONCEPTOS = {
     ],
 }
 
-# Concepto → páginas
 CONCEPTO_A_PAGINAS = {
     "Pauta Digital en Carrusel": [49],
     "Ofertas Hot visibles en sitio": [11],
     "Email Marketing Multimarca": [51],
     "Email Marketing Exclusivo de marca": [52],
     "Post exclusivo de marca": [48],
-
     "Mega Ofertas": [15, 16],
     "Hero Banner Categoría": [31],
     "Hero Banner Home": [28],
     "Cintillos Home": [29],
 }
 
-# Extras disponibles
 EXTRAS_DISPONIBLES = [
     "Mega Ofertas",
     "Hero Banner Categoría",
@@ -66,47 +58,35 @@ EXTRAS_DISPONIBLES = [
     "Email Marketing Exclusivo de marca",
 ]
 
-# =========================
-# FUNCIONES
-# =========================
-
 def obtener_paginas(patrocinio, extras):
     paginas = set(PAGINAS_BASE)
 
-    # Patrocinio
     conceptos = PATROCINIO_A_CONCEPTOS.get(patrocinio, [])
     for concepto in conceptos:
         paginas.update(CONCEPTO_A_PAGINAS.get(concepto, []))
 
-    # Extras
     for extra in extras:
         paginas.update(CONCEPTO_A_PAGINAS.get(extra, []))
 
     return sorted(paginas), conceptos
 
-
 def generar_pdf(input_pdf_path, paginas_humanas):
-    src = fitz.open(input_pdf_path)
-    dst = fitz.open()
+    reader = PdfReader(input_pdf_path)
+    writer = PdfWriter()
 
     for pagina in paginas_humanas:
         idx = pagina - 1
-        if 0 <= idx < len(src):
-            dst.insert_pdf(src, from_page=idx, to_page=idx)
+        if 0 <= idx < len(reader.pages):
+            writer.add_page(reader.pages[idx])
 
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     output_path = temp_file.name
     temp_file.close()
 
-    dst.save(output_path)
-    dst.close()
-    src.close()
+    with open(output_path, "wb") as f:
+        writer.write(f)
 
     return output_path
-
-# =========================
-# UI
-# =========================
 
 st.title("Generador de Specs")
 
@@ -129,6 +109,7 @@ if st.button("Generar PDF"):
 
     st.success("PDF generado")
     st.write("Patrocinio:", patrocinio)
+    st.write("Conceptos:", conceptos)
     st.write("Extras:", extras if extras else "Ninguno")
     st.write("Páginas:", paginas)
 
@@ -138,6 +119,6 @@ if st.button("Generar PDF"):
         st.download_button(
             label="Descargar PDF",
             data=f,
-            file_name=f"Specs_{patrocinio}.pdf",
+            file_name=f"Specs_{patrocinio.replace(' ', '_')}.pdf",
             mime="application/pdf"
         )
