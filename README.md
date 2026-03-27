@@ -1,2 +1,2 @@
 streamlit==1.43.0
-pypdf==6.9.2
+pypdf==6.0.0
